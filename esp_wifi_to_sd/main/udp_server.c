@@ -4,6 +4,7 @@
 #include "esp_event.h"
 #include "protocol_examples_common.h"
 #include "udp_streamer.h" 
+#include "sd_writer.h"
 
 static const char *TAG = "APP_MAIN";
 
@@ -24,7 +25,10 @@ static void packet_processing_task(void *pvParameters)
             // Process the received packet
             ESP_LOGI(TAG, "Processing %d bytes...", item_size);
             // Write data to SD card here!
-
+            esp_err_t err = sd_writer_write(item, item_size);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "SD write fail");
+            }
             // Return item to Ring Buffer
             vRingbufferReturnItem(buf_handle, (void *)item);
         }
@@ -40,6 +44,10 @@ void app_main(void)
 
     // Connect to Wi-Fi
     ESP_ERROR_CHECK(example_connect());
+
+    // sd init
+    ESP_ERROR_CHECK(sd_writer_init("0:/test.bin"));  // init test file
+
 
     // Initialize UDP Streamer
     udp_streamer_config_t stream_cfg = {
