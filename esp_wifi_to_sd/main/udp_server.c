@@ -25,10 +25,12 @@ static void packet_processing_task(void *pvParameters)
             // Process the received packet
             ESP_LOGI(TAG, "Processing %d bytes...", item_size);
             // Write data to SD card here!
+
             esp_err_t err = sd_writer_write(item, item_size);
             if (err != ESP_OK) {
                 ESP_LOGE(TAG, "SD write fail");
             }
+            
             // Return item to Ring Buffer
             vRingbufferReturnItem(buf_handle, (void *)item);
         }
