@@ -25,16 +25,19 @@ static esp_err_t mount_sd(void)
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
 
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
-    slot_config.width = 4;   
+    slot_config.width = 4;  
+    slot_config.gpio_cd = GPIO_NUM_NC;
+    slot_config.gpio_wp = GPIO_NUM_NC; 
+    slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
 
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .format_if_mount_failed = false,
-        .max_files =5,
+        .max_files = 5,
         .allocation_unit_size = 16 * 1024,
     };
-
+    ESP_LOGI(TAG, "before esp vfs");
     esp_err_t ret = esp_vfs_fat_sdmmc_mount(
-        "0:",
+        "/sdcard",
         &host,
         &slot_config,
         &mount_config,
