@@ -8,16 +8,13 @@
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
-
-// 引入 sd_writer 組件 (確保 SD 卡已掛載)
 #include "sd_writer.h" 
-// 引入自己的標頭檔
 #include "tcp_server.h"
 
 static const char *TAG = "TCP_SERVER";
 #define PORT 3333
 
-// 確保完整接收指定長度的資料 (TCP 必備)
+// 確保完整接收指定長度的資料 
 static int recv_exact(int sock, void *buf, size_t len) {
     size_t received = 0;
     while (received < len) {
@@ -31,7 +28,7 @@ static int recv_exact(int sock, void *buf, size_t len) {
 }
 
 void tcp_server_task(void *pvParameters) {
-    char rx_buffer[4096]; // 4KB 接收緩衝區
+    char rx_buffer[4096]; 
     int addr_family = AF_INET;
     int ip_protocol = IPPROTO_IP;
     struct sockaddr_in dest_addr;
@@ -95,7 +92,7 @@ void tcp_server_task(void *pvParameters) {
 
             ESP_LOGI(TAG, "Header -> Type: 0x%02X, Size: %lu bytes", packet_type, file_size);
 
-            // 2. 決定檔名 (依照 sd_writer 的掛載點 /sdcard)
+            // 2. 決定檔名
             char file_path[64];
             if (packet_type == 0x01) {
                 snprintf(file_path, sizeof(file_path), "/sdcard/control.dat");
@@ -107,7 +104,7 @@ void tcp_server_task(void *pvParameters) {
                 break;
             }
 
-            // 3. 開啟檔案 (直接使用標準 IO)
+            // 3. 開啟檔案
             FILE *f = fopen(file_path, "wb");
             if (f == NULL) {
                 ESP_LOGE(TAG, "Failed to open file: %s", file_path);
@@ -129,7 +126,7 @@ void tcp_server_task(void *pvParameters) {
                     goto socket_error;
                 }
 
-                // 寫入 SD 卡 (這裡會自動等到 SD 卡寫完才繼續，實現流量控制)
+                // 寫入 SD 卡
                 size_t written = fwrite(rx_buffer, 1, n, f);
                 total_written += written;
                 remaining -= written;
@@ -138,7 +135,6 @@ void tcp_server_task(void *pvParameters) {
             fclose(f);
             ESP_LOGI(TAG, "Saved %s (%d bytes)", file_path, total_written);
             
-            // 檔案傳完，繼續迴圈等待下一個檔案...
         }
 
         socket_error:
