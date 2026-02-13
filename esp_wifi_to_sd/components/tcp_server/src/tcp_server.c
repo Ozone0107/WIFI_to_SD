@@ -4,6 +4,7 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
@@ -108,37 +109,46 @@ void tcp_server_task(void *pvParameters) {
             }
 
             // 3. 開啟檔案 (直接使用標準 IO)
-            FILE *f = fopen(file_path, "wb");
-            if (f == NULL) {
-                ESP_LOGE(TAG, "Failed to open file: %s", file_path);
-                close(sock);
-                break;
-            }
+            // FILE *f = fopen(file_path, "wb");
+            // if (f == NULL) {
+            //     ESP_LOGE(TAG, "Failed to open file: %s", file_path);
+            //     close(sock);
+            //     break;
+            // }
 
             // 4. 接收內容並寫入
             size_t remaining = file_size;
             size_t total_written = 0;
-            
+
+            int64_t start_time = esp_timer_get_time();
             while (remaining > 0) {
                 size_t to_read = (remaining < sizeof(rx_buffer)) ? remaining : sizeof(rx_buffer);
                 
                 int n = recv_exact(sock, rx_buffer, to_read);
                 if (n <= 0) {
                     ESP_LOGE(TAG, "Error receiving body");
-                    fclose(f);
+                    // fclose(f);
                     goto socket_error;
                 }
 
                 // 寫入 SD 卡 (這裡會自動等到 SD 卡寫完才繼續，實現流量控制)
-                size_t written = fwrite(rx_buffer, 1, n, f);
+                // size_t written = fwrite(rx_buffer, 1, n, f);
+                size_t written = n;
                 total_written += written;
                 remaining -= written;
             }
+            int64_t end_time = esp_timer_get_time();
+            int64_t time_diff_us = end_time - start_time;
+            float time_sec = time_diff_us / 1000000.0f;
+            float speed_bps = (total_written * 8.0f) / time_sec; // bits per second
+            float speed_mbps = speed_bps / 1000000.0f;            // Mbps
 
-            fclose(f);
-            ESP_LOGI(TAG, "Saved %s (%d bytes)", file_path, total_written);
+            ESP_LOGI(TAG, "Done! Size: %d Bytes, Time: %.3f s, Speed: %.2f Mbps", 
+                     total_written, time_sec, speed_mbps);
+
+            // fclose(f);
+            // ESP_LOGI(TAG, "Saved %s (%d bytes)", file_path, total_written);
             
-            // 檔案傳完，繼續迴圈等待下一個檔案...
         }
 
         socket_error:

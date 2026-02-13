@@ -3,5 +3,5 @@ idf_component_register(
 
     INCLUDE_DIRS "include"
 
-    REQUIRES sd_writer lwip freertos esp_common esp_system esp_ringbuf
+    REQUIRES esp_timer sd_writer lwip freertos esp_common esp_system esp_ringbuf
 )

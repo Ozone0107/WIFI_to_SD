@@ -4,7 +4,7 @@ import os
 import time
 
 # --- 設定區 ---
-ESP_IP = "192.168.0.128"  # 請確認 ESP32 的 IP
+ESP_IP = "192.168.0.238"  # 請確認 ESP32 的 IP
 ESP_PORT = 3333        # TCP Port (需與 ESP32 一致)
 CONTROL_FILE = "control.dat"
 FRAME_FILE = "frame.dat"

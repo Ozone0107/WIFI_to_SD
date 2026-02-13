@@ -5,7 +5,7 @@
   "idf.openOcdConfigs": [
     "board/esp32-wrover-kit-3.3v.cfg"
   ],
-  "idf.portWin": "COM9",
+  "idf.portWin": "COM7",
   "idf.toolsPathWin": "C:\\Users\\Jun\\.espressif",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32"
@@ -17,5 +17,5 @@
     "--compile-commands-dir=d:\\Lightdance\\WIFI_to_SD\\project-name\\build"
   ],
   "idf.flashType": "UART",
-  "idf.currentSetup": "C:\\Users\\yingr\\esp\\v5.5.2\\esp-idf"
+  "idf.currentSetup": "C:\\Users\\Jun\\esp\\v5.5.2\\esp-idf"
 }
