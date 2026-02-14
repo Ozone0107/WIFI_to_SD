@@ -3,92 +3,99 @@ import struct
 import os
 import time
 
-# --- 設定區 ---
-ESP_IP = "192.168.0.128"  # 請確認 ESP32 的 IP
-ESP_PORT = 3333        # TCP Port (需與 ESP32 一致)
-CONTROL_FILE = "control.dat"
-FRAME_FILE = "frame.dat"
+# 設定伺服器監聽的 IP 和 Port
+# '0.0.0.0' 表示監聽所有網卡 (Wi-Fi, Ethernet 等)
+HOST = '0.0.0.0'
+PORT = 3333
 
-# 協定定義 (跟原本一樣)
-PACKET_TYPE_CONTROL = 0x01
-PACKET_TYPE_FRAME   = 0x02
+# 要傳送的檔案名稱
+FILE_CONTROL = 'control.dat'
+FILE_FRAME = 'frame.dat'
 
-class TcpSender:
-    def __init__(self, ip, port):
-        self.ip = ip
-        self.port = port
-        self.sock = None
+def get_file_data(filename):
+    if not os.path.exists(filename):
+        print(f"錯誤: 找不到檔案 {filename}")
+        # 如果檔案不存在，建立一個假的測試檔案
+        with open(filename, 'wb') as f:
+            f.write(b'This is a test data for ' + filename.encode())
+        print(f"已自動建立測試檔案: {filename}")
+    
+    with open(filename, 'rb') as f:
+        return f.read()
 
-    def connect(self):
-        """建立 TCP 連線"""
-        print(f"正在連線到 TCP Server {self.ip}:{self.port} ...")
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(5) # 設定 5 秒連線超時
-        try:
-            self.sock.connect((self.ip, self.port))
-            print("連線成功！")
-            return True
-        except Exception as e:
-            print(f"連線失敗: {e}")
-            return False
-
-    def send_file(self, file_path, packet_type, skip_bytes=0):
-        """發送檔案：先送 Header 告訴長度，再送內容"""
-        if not os.path.exists(file_path):
-            print(f"錯誤：找不到檔案 {file_path}")
-            return
-
-        # 1. 取得檔案大小
-        file_size = os.path.getsize(file_path) - skip_bytes
-        if file_size < 0: file_size = 0
-
-        print(f"準備發送 {file_path} (Type: {packet_type}, Size: {file_size} bytes)...")
-
-        try:
-            # 2. 發送檔頭 (Header)
-            # 格式: [Type (1 byte)] + [Size (4 bytes, Big-Endian)]
-            # Big-Endian (>) 是網路傳輸標準
-            header = struct.pack('>BI', packet_type, file_size)
-            self.sock.sendall(header)
-
-            # 3. 發送檔案內容 (Body)
-            with open(file_path, 'rb') as f:
-                f.seek(skip_bytes) # 跳過檔頭 (如果有的話)
-                
-                sent_total = 0
-                buffer_size = 4096 # 每次讀 4KB (TCP 會自動分包，這裡只是讀檔緩衝)
-                
-                while True:
-                    data = f.read(buffer_size)
-                    if not data:
-                        break
-                    self.sock.sendall(data) # sendall 保證資料送完
-                    sent_total += len(data)
-                    # 這裡可以印進度條，但不需要 sleep
-
-            print(f"發送完成：{file_path} (共 {sent_total} bytes)")
-
-        except Exception as e:
-            print(f"發送過程中發生錯誤: {e}")
-
-    def close(self):
-        if self.sock:
-            self.sock.close()
-            print("連線已關閉。")
-
-if __name__ == "__main__":
-    sender = TcpSender(ESP_IP, ESP_PORT)
-
-    if sender.connect():
-        # 1. 傳送 control.dat
-        # 這裡假設 control.dat 不需要跳過檔頭
-        sender.send_file(CONTROL_FILE, PACKET_TYPE_CONTROL, skip_bytes=0)
-
-        # 稍微等一下，確保 ESP32 處理完上一個檔案的邏輯 (非必要，但保險)
-        time.sleep(0.5)
-
-        # 2. 傳送 frame.dat
-        # 這裡保留你之前的設定：如果需要跳過 2 bytes 版本號，把 0 改成 2
-        sender.send_file(FRAME_FILE, PACKET_TYPE_FRAME, skip_bytes=0)
+def start_server():
+    # 建立 TCP Socket
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+    # 允許 Port 重複使用 (避免重啟時出現 Address already in use)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
+    try:
+        server_socket.bind((HOST, PORT))
+        server_socket.listen(5) # 允許等待的連線數
         
-        sender.close()
+        # 顯示本機 IP 供參考
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+        print(f"========================================")
+        print(f"TCP Server 啟動中...")
+        print(f"監聽 Port: {PORT}")
+        print(f"本機 IP (參考用): {local_ip}")
+        print(f"請確認 ESP32 的 TCP_SERVER_IP 設定為你的電腦 IP")
+        print(f"========================================")
+
+        while True:
+            print("等待 ESP32 連線...")
+            client_sock, addr = server_socket.accept()
+            print(f"連線成功! 來自: {addr}")
+
+            try:
+                # 1. 接收 Player ID (ESP32 發送類似 "1\n")
+                # 設定接收緩衝區，簡單讀取
+                player_id_data = client_sock.recv(1024)
+                if not player_id_data:
+                    print("未收到數據，斷開連線")
+                    client_sock.close()
+                    continue
+                
+                player_id = player_id_data.decode('utf-8').strip()
+                print(f"收到 Player ID: {player_id}")
+
+                # 準備要發送的檔案數據
+                control_data = get_file_data(FILE_CONTROL)
+                frame_data = get_file_data(FILE_FRAME)
+
+                # 2. 發送 control.dat
+                # 格式: [4 bytes Size (Big Endian)] + [Data]
+                print(f"正在發送 {FILE_CONTROL} ({len(control_data)} bytes)...")
+                
+                # pack('>I') 表示 Big-Endian Unsigned Int (4 bytes)，對應 ESP32 的 ntohl
+                size_header = struct.pack('>I', len(control_data))
+                client_sock.sendall(size_header)
+                client_sock.sendall(control_data)
+                
+                # 稍微延遲一下確保 ESP32 處理完 (非必要，但測試時有助穩定)
+                time.sleep(0.1)
+
+                # 3. 發送 frame.dat
+                print(f"正在發送 {FILE_FRAME} ({len(frame_data)} bytes)...")
+                size_header = struct.pack('>I', len(frame_data))
+                client_sock.sendall(size_header)
+                client_sock.sendall(frame_data)
+
+                print("發送完成，關閉連線")
+
+            except Exception as e:
+                print(f"傳輸過程發生錯誤: {e}")
+            
+            finally:
+                client_sock.close()
+                print("----------------------------------------")
+
+    except Exception as e:
+        print(f"Server 啟動失敗: {e}")
+    finally:
+        server_socket.close()
+
+if __name__ == '__main__':
+    start_server()
