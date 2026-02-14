@@ -4,7 +4,7 @@ import os
 import time
 
 # --- 設定區 ---
-ESP_IP = "192.168.0.238"  # 請確認 ESP32 的 IP
+ESP_IP = "192.168.0.128"  # 請確認 ESP32 的 IP
 ESP_PORT = 3333        # TCP Port (需與 ESP32 一致)
 CONTROL_FILE = "control.dat"
 FRAME_FILE = "frame.dat"
@@ -56,7 +56,7 @@ class TcpSender:
                 f.seek(skip_bytes) # 跳過檔頭 (如果有的話)
                 
                 sent_total = 0
-                buffer_size = 4096 # 每次讀 4KB (TCP 會自動分包，這裡只是讀檔緩衝)
+                buffer_size = 16384 # 4KB or 16KB 沒差
                 
                 while True:
                     data = f.read(buffer_size)
