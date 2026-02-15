@@ -22,7 +22,7 @@ static void app_task(void* arg) {
 
     if(sd_err != ESP_OK) {
         ESP_LOGE(TAG, "frame system init failed, halt");
-        vTaskDelay(portMAX_DELAY);
+        //vTaskDelay(portMAX_DELAY);
         frame_sys_ready = false;
     } else {
         frame_sys_ready = true;

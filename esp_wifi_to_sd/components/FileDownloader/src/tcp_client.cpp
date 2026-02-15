@@ -16,7 +16,7 @@
 #include <lwip/netdb.h>
 
 #include "sd_writer.h"
-#include "bt_receiver.h"
+//#include "bt_receiver.h"
 #include "readframe.h"
 
 static const char *TAG = "TCP_CLIENT";
@@ -25,6 +25,8 @@ static const char *TAG = "TCP_CLIENT";
 static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
+
+#define TCP_BUFFER_SIZE 4096  // 定義 Buffer 大小
 
 static int s_retry_num = 0;
 
@@ -128,16 +130,18 @@ static esp_err_t download_file(int sock, const char* filename) {
     }
 
     // 3. Receive file data in chunks and write to SD
-    uint8_t *buf = (uint8_t *)malloc(4096);
-    if (buf == NULL) {
-        ESP_LOGE(TAG, "Failed to allocate buffer");
-        sd_writer_close();
-        return ESP_FAIL;
-    }
+    // uint8_t *buf = (uint8_t *)malloc(4096);
+    // if (buf == NULL) {
+    //     ESP_LOGE(TAG, "Failed to allocate buffer");
+    //     sd_writer_close();
+    //     return ESP_FAIL;
+    // }
+    uint8_t buf[4096];
     size_t remaining = file_size;
     
     while (remaining > 0) {
-        size_t to_read = (remaining < sizeof(buf)) ? remaining : sizeof(buf);
+        size_t to_read = (remaining < TCP_BUFFER_SIZE) ? remaining : TCP_BUFFER_SIZE;
+
         int n = recv(sock, buf, to_read, 0);
         if (n <= 0) {
             ESP_LOGE(TAG, "Socket error during download");
@@ -153,7 +157,7 @@ static esp_err_t download_file(int sock, const char* filename) {
         remaining -= n;
     }
 
-    free(buf);
+
     sd_writer_close();
     ESP_LOGI(TAG, "Download complete: %s", filename);
     return ESP_OK;
@@ -224,5 +228,6 @@ static void update_task_func(void *pvParameters) {
 }
 
 void tcp_client_start_update_task(void) {
-    xTaskCreate(update_task_func, "tcp_update", 8192, NULL, 5, NULL);
+    xTaskCreate(update_task_func, "tcp_update", 16384, NULL, 5, NULL);
+
 }

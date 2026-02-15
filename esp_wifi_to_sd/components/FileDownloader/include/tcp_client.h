@@ -7,9 +7,9 @@ extern "C" {
 #endif
 
 // Wi-Fi & TCP Server Config
-#define TCP_WIFI_SSID      "cch0610"
-#define TCP_WIFI_PASS      "86603863"
-#define TCP_SERVER_IP      "192.168.0.64" // server IP
+#define TCP_WIFI_SSID      "Ou Family New"
+#define TCP_WIFI_PASS      "062159299"
+#define TCP_SERVER_IP      "192.168.0.112" // server IP
 #define TCP_SERVER_PORT    3333            // server port
 
 /**
